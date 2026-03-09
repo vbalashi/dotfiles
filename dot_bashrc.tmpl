@@ -42,11 +42,6 @@ if [ -f /usr/share/bash-completion/bash_completion ]; then
     . /usr/share/bash-completion/bash_completion
 fi
 
-# Zoxide
-if command -v zoxide >/dev/null 2>&1; then
-    eval "$(zoxide init bash)"
-fi
-
 # fzf
 if [ -f /usr/share/fzf/key-bindings.bash ]; then
     source /usr/share/fzf/key-bindings.bash
@@ -179,5 +174,10 @@ if [ -d "$HOME/idol/sw/KeyviewFilterSDK_25.4.0_LINUX_X86_64" ]; then
   export KVFILTER_BIN=$HOME/idol/sw/KeyviewFilterSDK_25.4.0_LINUX_X86_64/LINUX_X86_64/bin
   export KV_SAMPLE_PROGRAM_LICENSE_FROM_FILEPATH="$HOME/idol/license/licensekey_25.4_archilinux.dat"
   PATH=$PATH:$KVFILTER_BIN
+fi
+
+# Zoxide: keep this at the end so its doctor check sees no later shell mutations.
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init bash)"
 fi
 {{- end }}
