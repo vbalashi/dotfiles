@@ -1,0 +1,183 @@
+#
+# ~/.bashrc
+#
+
+# ============================================================================
+# CORE — interactive check, vi mode, PATH, locale, SSH_AUTH_SOCK
+# ============================================================================
+
+[[ $- != *i* ]] && return
+
+set -o vi
+
+# PATH
+if [[ -d "$HOME/bin" && ":$PATH:" != *":$HOME/bin:"* ]]; then
+    export PATH="$HOME/bin:$PATH"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+
+{{- if eq .machine_type "arch" }}
+PATH=$PATH:$HOME/local/bin
+{{- end }}
+
+export SSH_AUTH_SOCK=~/.1password/agent.sock
+
+# ============================================================================
+# SECRETS — source ~/.secrets (API keys, proxy keys)
+# ============================================================================
+
+[ -f ~/.secrets ] && source ~/.secrets
+
+# ============================================================================
+# TOOL INTEGRATIONS — zoxide, fzf, mise, dircolors, starship
+# ============================================================================
+
+# Dircolors
+if [ -f ~/.dircolors ]; then
+    eval "$(dircolors -b ~/.dircolors)"
+fi
+
+# Bash completion
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi
+
+# Zoxide
+if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init bash)"
+fi
+
+# fzf
+if [ -f /usr/share/fzf/key-bindings.bash ]; then
+    source /usr/share/fzf/key-bindings.bash
+    source /usr/share/fzf/completion.bash
+fi
+
+# Mise
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate bash)"
+fi
+
+# Starship prompt
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init bash)"
+else
+    PS1='[\u@\h \W]\$ '
+fi
+
+# ============================================================================
+# SOURCED FILES — ~/.bash_functions, ~/.aliases, ~/.k8s-proxy.sh
+# ============================================================================
+
+[ -f ~/.bash_functions ] && source ~/.bash_functions
+[ -f ~/.aliases ] && source ~/.aliases
+
+{{- if .has_k8s }}
+# ============================================================================
+# KUBERNETES — KUBECONFIG, KUBE_EDITOR, proxy wrappers
+# ============================================================================
+
+export KUBECONFIG=$HOME/.kube/config
+export KUBE_EDITOR=nvim
+
+[ -f ~/.k8s-proxy.sh ] && . ~/.k8s-proxy.sh
+{{- end }}
+
+{{- if .has_ai_proxy }}
+# ============================================================================
+# AI / LLM — proxy config, claude shortcuts
+# ============================================================================
+
+# Proxy endpoints (values from ~/.secrets, defaults here)
+AI_PROXY_LOCAL_8045="${AI_PROXY_LOCAL_8045:-http://localhost:8045}"
+AI_PROXY_LOCAL_8045_KEY="${AI_PROXY_LOCAL_8045_KEY:-}"
+
+AI_PROXY_LOCAL_8317="${AI_PROXY_LOCAL_8317:-http://localhost:8317}"
+AI_PROXY_LOCAL_8317_KEY="${AI_PROXY_LOCAL_8317_KEY:-}"
+
+AI_PROXY_REMOTE="${AI_PROXY_REMOTE:-http://192.168.178.114:20128/v1}"
+AI_PROXY_REMOTE_KEY="${AI_PROXY_REMOTE_KEY:-}"
+
+# Default proxy (remote)
+AI_PROXY_URL="${AI_PROXY_URL:-$AI_PROXY_REMOTE}"
+AI_PROXY_KEY="${AI_PROXY_KEY:-$AI_PROXY_REMOTE_KEY}"
+{{- end }}
+
+# ============================================================================
+# COMPLETIONS — fzf, devpod, adguardvpn, scpp
+# ============================================================================
+
+# scpp completion
+shopt -q progcomp || shopt -s progcomp
+type _init_completion >/dev/null 2>&1 || {
+  [ -r /usr/share/bash-completion/bash_completion ] && \
+    . /usr/share/bash-completion/bash_completion
+}
+
+if ! declare -F _ssh >/dev/null; then
+  type __load_completion >/dev/null 2>&1 && __load_completion ssh 2>/dev/null || true
+  [ -r /usr/share/bash-completion/completions/ssh ] && \
+    . /usr/share/bash-completion/completions/ssh
+fi
+
+complete -o default -o nospace -F _scpp_complete scpp
+complete -o default -o nospace -F _scpp_complete scp_via_proxy
+
+# devpod-cli completion
+if command -v devpod-cli >/dev/null 2>&1; then
+  if ! command -v devpod >/dev/null; then
+    devpod() { command devpod-cli "$@"; }
+  fi
+  source <(devpod-cli completion bash)
+  if complete -p devpod &>/dev/null; then
+    eval "$(complete -p devpod | sed 's/ devpod$/ devpod-cli/')"
+  fi
+fi
+
+# adguardvpn-cli completion
+if command -v adguardvpn-cli >/dev/null 2>&1; then
+  complete -F _adguardvpn_cli_complete adguardvpn-cli
+fi
+
+{{- if eq .machine_type "arch" }}
+# ============================================================================
+# ARCH-SPECIFIC — yay completion fix, NVM, opencode, KV SDK
+# ============================================================================
+
+# Yay completion: filter null bytes from yay -Pc output
+if [ -f /usr/share/bash-completion/completions/yay ]; then
+  source /usr/share/bash-completion/completions/yay
+
+  _yay_completion_filter() {
+    if command -v strings >/dev/null; then
+      yay -Pc | strings -n 1
+    else
+      yay -Pc | tr -d '\0'
+    fi
+  }
+
+  _yay_pkg() {
+    [ -z "$cur" ] && _pacman_pkg Slq && return
+    _arch_compgen "$(_yay_completion_filter)"
+  }
+
+  complete -F _yay yay
+fi
+
+# NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# opencode
+if [ -d "$HOME/.opencode/bin" ]; then
+  export PATH=$HOME/.opencode/bin:$PATH
+fi
+
+# Keyview Filter SDK
+if [ -d "$HOME/idol/sw/KeyviewFilterSDK_25.4.0_LINUX_X86_64" ]; then
+  export KVFILTER_BIN=$HOME/idol/sw/KeyviewFilterSDK_25.4.0_LINUX_X86_64/LINUX_X86_64/bin
+  export KV_SAMPLE_PROGRAM_LICENSE_FROM_FILEPATH="$HOME/idol/license/licensekey_25.4_archilinux.dat"
+  PATH=$PATH:$KVFILTER_BIN
+fi
+{{- end }}

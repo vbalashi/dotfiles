@@ -1,0 +1,50 @@
+# ============================================================================
+# ALIASES
+# ============================================================================
+
+# --- Editor ---
+alias vim=nvim
+alias vi=nvim
+alias s='source ~/.bashrc'
+
+# --- ls / file listing ---
+if command -v lsd >/dev/null 2>&1; then
+  alias ls='lsd'
+  alias ll='lsd -l'
+  alias la='lsd -la'
+  alias lt='lsd --tree'
+else
+  alias ls='ls --color=auto'
+fi
+
+# --- cat → bat ---
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat --paging=never'
+fi
+
+# --- grep ---
+alias grep='grep --color=auto'
+
+# --- Kubernetes ---
+alias k=kubectl
+alias h=helm
+alias dnstools='kubectl run dnstools --image=infoblox/dnstools --restart=Never -it --rm'
+alias hp='http_proxy=http://127.0.0.1:8118 \
+https_proxy=http://127.0.0.1:8118 \
+no_proxy="localhost,127.0.0.1,.otxlab.net,.swinfra.net,10.0.0.0/8,192.168.0.0/16" \
+helm'
+
+# --- SSH ---
+alias sshp='ssh -o "ProxyCommand=nc -x 192.168.178.61:1080 -X 5 %h %p"'
+alias scpp='scp_via_proxy'
+
+# --- Network ---
+alias wakeotx='wakeonlan 4C:D7:17:59:DE:A8'
+
+# --- Git ---
+alias lg='lazygit'
+
+# --- Kubectl exec into nifi pods ---
+alias nifi-sa-bp2='kubectl --context bp2-rke-uat -n bsavisearch-test-ns1 exec -it idol-nifi-0 -c idol-nifi -- bash'
+alias nifi-sa='kubectl --context otxlab -n bsavisearch-test-ns1 exec -it idol-nifi-0 -c idol-nifi -- bash'
+alias nifi='kubectl --context otxlab exec -n idol -it idol-nifi-0 -c idol-nifi --context otxlab -- bash'

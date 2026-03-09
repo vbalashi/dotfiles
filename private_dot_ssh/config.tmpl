@@ -1,0 +1,66 @@
+{{ if eq .machine_type "arch" }}
+# DevPod Start devcontainer.devpod
+Host devcontainer.devpod
+  ForwardAgent yes
+  LogLevel error
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  HostKeyAlgorithms rsa-sha2-256,rsa-sha2-512,ssh-rsa
+  ProxyCommand "/usr/bin/devpod-cli" ssh --stdio --context default --user vscode devcontainer
+  User vscode
+# DevPod End devcontainer.devpod
+{{ end }}
+
+{{ if .has_1password }}
+Host *
+	IdentityAgent {{ .chezmoi.homeDir }}/.1password/agent.sock
+	ForwardAgent yes
+	ServerAliveInterval 30
+	ServerAliveCountMax 3
+{{ else }}
+Host *
+	ForwardAgent yes
+	ServerAliveInterval 30
+	ServerAliveCountMax 3
+{{ end }}
+
+Host idol2 idol1 idol0 idol-s
+	User idol
+	ProxyCommand nc -x 192.168.178.61:1080 -X 5 %h %p
+
+Host horu
+	HostName 178462.msk.web.highserver.ru
+	User root
+
+Host mikrotik-go
+	HostName 95.220.66.81
+	Port 4022
+	User khrustal
+
+Host dell
+	Hostname dell
+	User khrustal
+	IdentityFile ~/.ssh/github-pc.pub
+
+Host oracle
+	Hostname oracle
+	User admin1
+
+Host gitlab.otxlab.net
+	ProxyCommand nc -X 5 -x 192.168.178.61:1080 %h %p
+
+Host syn0
+	Hostname syn0
+	Port 4422
+	User khrustal
+
+Host otx-win
+	HostName otx
+	User ssharch
+	IdentitiesOnly yes
+	IdentityFile ~/.ssh/ssh_home.pub
+
+Host vinay
+	HostName 3.143.78.192
+	User nickolai
+	DynamicForward 1080

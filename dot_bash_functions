@@ -1,0 +1,303 @@
+# ============================================================================
+# BASH FUNCTIONS
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# gcm — AI-powered git commit message generator
+# Uses llm CLI with Ollama (default) or Gemini (GCM_PROVIDER=gemini)
+# ---------------------------------------------------------------------------
+gcm() {
+    generate_commit_message() {
+        if [ "${GCM_PROVIDER:-ollama}" = "gemini" ]; then
+            git diff --cached | llm -m gemini-2.0-flash-lite "
+Below is a diff of all staged changes, coming from the command:
+
+\`\`\`
+git diff --cached
+\`\`\`
+
+Please generate a concise, one-line commit message for these changes.
+Return only the commit message, no quotes or extra formatting."
+        else
+            git diff --cached | OLLAMA_HOST=${OLLAMA_HOST:-http://ollama.dell.lan:32746} \
+            llm -m gemma3:4b "
+Below is a diff of all staged changes, coming from the command:
+
+\`\`\`
+git diff --cached
+\`\`\`
+
+Please generate a concise, one-line commit message for these changes.
+Return only the commit message, no quotes or extra formatting."
+        fi
+    }
+
+    read_input() {
+        if [ -n "$ZSH_VERSION" ]; then
+            echo -n "$1"
+            read -r REPLY
+        else
+            read -p "$1" -r REPLY
+        fi
+    }
+
+    echo "Generating AI-powered commit message..."
+    commit_message=$(generate_commit_message)
+
+    while true; do
+        echo -e "\nProposed commit message:"
+        echo "$commit_message"
+
+        read_input "Do you want to (a)ccept, (e)dit, (r)egenerate, or (c)ancel? "
+        choice=$REPLY
+
+        case "$choice" in
+            a|A )
+                if git commit -m "$commit_message"; then
+                    echo "Changes committed successfully!"
+                    return 0
+                else
+                    echo "Commit failed. Please check your changes and try again."
+                    return 1
+                fi
+                ;;
+            e|E )
+                read_input "Enter your commit message: "
+                commit_message=$REPLY
+                if [ -n "$commit_message" ] && git commit -m "$commit_message"; then
+                    echo "Changes committed successfully with your message!"
+                    return 0
+                else
+                    echo "Commit failed. Please check your message and try again."
+                    return 1
+                fi
+                ;;
+            r|R )
+                echo "Regenerating commit message..."
+                commit_message=$(generate_commit_message)
+                ;;
+            c|C )
+                echo "Commit cancelled."
+                return 1
+                ;;
+            * )
+                echo "Invalid choice. Please try again."
+                ;;
+        esac
+    done
+}
+
+# ---------------------------------------------------------------------------
+# scp_via_proxy — scp through SOCKS proxy
+# ---------------------------------------------------------------------------
+scp_via_proxy() {
+  scp -o ProxyCommand='nc -x 192.168.178.61:1080 %h %p' "$@"
+}
+
+# ---------------------------------------------------------------------------
+# _scpp_complete — completion for scpp/scp_via_proxy
+# ---------------------------------------------------------------------------
+_scpp_complete() {
+  local cur prev words cword
+  _init_completion -s || return
+
+  if (( cword == 1 )) && [[ "$cur" != -* ]]; then
+    _known_hosts -a -- "$cur"
+    return
+  fi
+
+  if [[ "$cur" == *@* || "$cur" == *:* ]]; then
+    if declare -F _ssh >/dev/null; then
+      local _save_WORDS=("${COMP_WORDS[@]}")
+      local _save_LINE=$COMP_LINE
+      COMP_WORDS[0]=scp
+      COMP_LINE="scp${_save_LINE#${_save_WORDS[0]}}"
+      _ssh "$@"
+      return
+    fi
+    _known_hosts -a -- "$cur"
+    return
+  fi
+
+  _filedir
+}
+
+# ---------------------------------------------------------------------------
+# AI proxy switching
+# ---------------------------------------------------------------------------
+use_remote_proxy() {
+  export AI_PROXY_URL="$AI_PROXY_REMOTE"
+  export AI_PROXY_KEY="$AI_PROXY_REMOTE_KEY"
+  echo "Switched to remote proxy: $AI_PROXY_URL"
+}
+
+use_local_8045() {
+  export AI_PROXY_URL="$AI_PROXY_LOCAL_8045"
+  export AI_PROXY_KEY="$AI_PROXY_LOCAL_8045_KEY"
+  echo "Switched to local proxy 8045: $AI_PROXY_URL"
+}
+
+use_local_8317() {
+  export AI_PROXY_URL="$AI_PROXY_LOCAL_8317"
+  export AI_PROXY_KEY="$AI_PROXY_LOCAL_8317_KEY"
+  echo "Switched to local proxy 8317: $AI_PROXY_URL"
+}
+
+show_proxy() {
+  echo "Current AI proxy: $AI_PROXY_URL"
+  echo "Current API key: ${AI_PROXY_KEY:0:15}..."
+}
+
+# ---------------------------------------------------------------------------
+# Claude proxy wrappers
+# ---------------------------------------------------------------------------
+opus() {
+  XDG_CONFIG_HOME="$HOME/.config/claude-proxy" \
+  XDG_DATA_HOME="$HOME/.local/share/claude-proxy" \
+  XDG_STATE_HOME="$HOME/.local/state/claude-proxy" \
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="gemini-claude-opus-4-5-thinking" \
+  claude "$@"
+}
+
+sonnet() {
+  XDG_CONFIG_HOME="$HOME/.config/claude-proxy" \
+  XDG_DATA_HOME="$HOME/.local/share/claude-proxy" \
+  XDG_STATE_HOME="$HOME/.local/state/claude-proxy" \
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="claude-sonnet-4-5" \
+  claude "$@"
+}
+
+sonnet_foundry() {
+  CLAUDE_CODE_USE_FOUNDRY=1 \
+  ANTHROPIC_FOUNDRY_BASE_URL="https://dilumio-01-resource.services.ai.azure.com/anthropic/" \
+  ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-4-5" \
+  ANTHROPIC_FOUNDRY_API_KEY="$(op read 'op://khrustal/msfoundry sonnet-4.5 resource/password')" \
+  claude "$@"
+}
+
+sonnet_foundry_diag() {
+  local base_url="https://dilumio-01-resource.services.ai.azure.com/anthropic/"
+  local model="claude-sonnet-4-5"
+  local key
+  key="$(op read 'op://khrustal/msfoundry sonnet-4.5 resource/password' 2>/dev/null || true)"
+
+  echo "Foundry base URL: ${base_url}"
+  echo "Default model: ${model}"
+  if [ -n "$key" ]; then
+    echo "API key: present (length ${#key})"
+  else
+    echo "API key: MISSING (op read failed)"
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    echo "Connectivity check (expect 401/404 if reachable):"
+    curl -sS -o /dev/null -w "%{http_code} %{url_effective}\n" "${base_url}v1/models" || true
+  fi
+
+  if command -v az >/dev/null 2>&1; then
+    echo "Azure deployments (if logged in):"
+    az rest --method get \
+      --uri "https://management.azure.com/subscriptions/48aa99f6-7107-4c74-aeaa-fc9454393b28/resourceGroups/rg-dilumio-01/providers/Microsoft.CognitiveServices/accounts/dilumio-01-resource/deployments?api-version=2024-10-01" \
+      --query "value[].name" -o tsv 2>/dev/null || true
+  fi
+}
+
+opus_copilot() {
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="claude-opus-4.5" \
+  claude "$@"
+}
+
+sonnet_copilot() {
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="claude-sonnet-4.5" \
+  claude "$@"
+}
+
+codex_copilot() {
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="gpt-5.1-codex" \
+  claude "$@"
+}
+
+q() {
+  XDG_CONFIG_HOME="$HOME/.config/claude-proxy" \
+  XDG_DATA_HOME="$HOME/.local/share/claude-proxy" \
+  XDG_STATE_HOME="$HOME/.local/state/claude-proxy" \
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="claude-haiku-4-5" \
+  claude -p "$*"
+}
+
+qq() {
+  XDG_CONFIG_HOME="$HOME/.config/claude-proxy" \
+  XDG_DATA_HOME="$HOME/.local/share/claude-proxy" \
+  XDG_STATE_HOME="$HOME/.local/state/claude-proxy" \
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="claude-sonnet-4-5" \
+  claude -p "$*"
+}
+
+qqq() {
+  XDG_CONFIG_HOME="$HOME/.config/claude-proxy" \
+  XDG_DATA_HOME="$HOME/.local/share/claude-proxy" \
+  XDG_STATE_HOME="$HOME/.local/state/claude-proxy" \
+  ANTHROPIC_BASE_URL="$AI_PROXY_URL" \
+  ANTHROPIC_API_KEY="$AI_PROXY_KEY" \
+  ANTHROPIC_MODEL="gemini-claude-opus-4-5-thinking" \
+  claude -p "$*"
+}
+
+# ---------------------------------------------------------------------------
+# AdGuard VPN CLI completion
+# ---------------------------------------------------------------------------
+_adguardvpn_cli_locations() {
+  adguardvpn-cli list-locations --bash-completion "$1" 2>/dev/null
+}
+
+_adguardvpn_cli_complete() {
+  local cur prev subcmd
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  subcmd="${COMP_WORDS[1]}"
+
+  if [[ "$prev" == "-l" || "$prev" == "--location" ]]; then
+    COMPREPLY=($(compgen -W "$(_adguardvpn_cli_locations "$cur")" -- "$cur"))
+    return
+  fi
+
+  if [[ $COMP_CWORD -le 1 ]]; then
+    COMPREPLY=($(compgen -W "login logout list-locations connect disconnect status license config check-update export-logs update site-exclusions -h --help --help-all -v --version" -- "$cur"))
+    return
+  fi
+
+  case "$subcmd" in
+    connect)
+      COMPREPLY=($(compgen -W "-l --location -f --fastest -v --verbose --no-fork --ppid-file --pid-file -y --yes -4 --ipv4only -6 --ipv6only --log-to-file --no-progress --boot" -- "$cur"))
+      ;;
+    export-logs)
+      COMPREPLY=($(compgen -W "-o --output -f --force" -- "$cur"))
+      ;;
+    update)
+      COMPREPLY=($(compgen -W "-v --verbose -y --yes" -- "$cur"))
+      ;;
+    list-locations)
+      COMPREPLY=($(compgen -W "--bash-completion" -- "$cur"))
+      ;;
+    config)
+      COMPREPLY=($(compgen -W "set-mode set-dns set-socks-port set-socks-host set-socks-username set-socks-password clear-socks-auth set-change-system-dns set-tun-routing-mode create-route-script set-crash-reporting set-telemetry set-update-channel set-protocol set-post-quantum set-show-hints set-debug-logging set-show-notifications set-bound-if-override show" -- "$cur"))
+      ;;
+    site-exclusions)
+      COMPREPLY=($(compgen -W "add remove show clear mode" -- "$cur"))
+      ;;
+  esac
+}

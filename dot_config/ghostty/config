@@ -1,0 +1,6 @@
+theme = dark:catppuccin-mocha.conf,light:catppuccin-latte.conf
+
+cursor-style = "block"
+cursor-invert-fg-bg = true
+cursor-style-blink = false
+shell-integration-features = "no-cursor"

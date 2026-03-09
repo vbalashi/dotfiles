@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_default="ssh://nuc/mnt/backup/borg-arch"
+repo="${BORG_REPO:-$repo_default}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root_dir="${BACKUP_REPO_ROOT:-$script_dir/../..}"
+root_dir="$(cd "$root_dir" 2>/dev/null && pwd || true)"
+
+include_list="$root_dir/inventories/backup/backup-include.txt"
+secret_list="$root_dir/inventories/backup/backup-encrypted.txt"
+root_list="$root_dir/inventories/backup/backup-root.txt"
+exclude_list="$root_dir/inventories/backup/borg-excludes-default.txt"
+
+borg_args=()
+disable_default_excludes=0
+skip_root=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-default-excludes)
+      disable_default_excludes=1
+      ;;
+    --no-root)
+      skip_root=1
+      ;;
+    *)
+      borg_args+=("$arg")
+      ;;
+  esac
+done
+
+# Fallback to default repo location if script lives outside repo
+if [[ -z "$root_dir" || ! -f "$include_list" ]]; then
+  root_dir="/home/khrustal/dev/arch-migration"
+  include_list="$root_dir/inventories/backup/backup-include.txt"
+  secret_list="$root_dir/inventories/backup/backup-encrypted.txt"
+  exclude_list="$root_dir/inventories/backup/borg-excludes-default.txt"
+fi
+
+echo "Using manifests:"
+echo "  include: $include_list"
+echo "  secret:  $secret_list"
+echo "  exclude: $exclude_list"
+if [[ -f "$root_list" ]]; then
+  echo "  root:    $root_list"
+fi
+
+if [[ ! -f "$include_list" ]]; then
+  echo "Missing $include_list" >&2
+  exit 1
+fi
+if [[ ! -f "$secret_list" ]]; then
+  echo "Missing $secret_list" >&2
+  exit 1
+fi
+
+root_paths=()
+if [[ -f "$root_list" ]]; then
+  while IFS= read -r p; do
+    [[ -z "$p" ]] && continue
+    if [[ ! -e "$p" ]]; then
+      echo "Skip missing (root list): $p" >&2
+      continue
+    fi
+    root_paths+=("$p")
+  done < "$root_list"
+fi
+
+borg_excludes=()
+if (( disable_default_excludes == 0 )); then
+  if [[ -f "$exclude_list" ]]; then
+    borg_excludes+=(--exclude-from "$exclude_list")
+  else
+    echo "Warn: missing exclude list: $exclude_list" >&2
+  fi
+fi
+
+# Build a filtered list of readable, existing paths to avoid errors.
+include_paths=()
+secret_paths=()
+
+while IFS= read -r p; do
+  [[ -z "$p" ]] && continue
+  if [[ ! -e "$p" ]]; then
+    echo "Skip missing: $p" >&2
+    continue
+  fi
+  if [[ ! -r "$p" ]]; then
+    echo "Skip unreadable: $p" >&2
+    continue
+  fi
+  include_paths+=("$p")
+done < "$include_list"
+
+while IFS= read -r p; do
+  [[ -z "$p" ]] && continue
+  if [[ ! -e "$p" ]]; then
+    echo "Skip missing: $p" >&2
+    continue
+  fi
+  if [[ ! -r "$p" ]]; then
+    echo "Skip unreadable: $p" >&2
+    continue
+  fi
+  secret_paths+=("$p")
+done < "$secret_list"
+
+if [[ "${#include_paths[@]}" -eq 0 ]]; then
+  echo "No readable paths in include list." >&2
+  exit 1
+fi
+if [[ "${#secret_paths[@]}" -eq 0 ]]; then
+  echo "No readable paths in secret list." >&2
+  exit 1
+fi
+
+export BORG_REPO="$repo"
+
+on_interrupt() {
+  echo "Interrupted. Exiting cleanly." >&2
+  exit 130
+}
+trap on_interrupt INT TERM
+
+# Initialize repo if it doesn't exist
+if ! borg info "$BORG_REPO" >/dev/null 2>&1; then
+  borg init --encryption=repokey-blake2 "$BORG_REPO"
+fi
+
+stamp="$(date +%F-%H%M)"
+
+borg create --stats --progress \
+  "$BORG_REPO"::arch-main-$stamp \
+  "${borg_args[@]}" \
+  "${borg_excludes[@]}" \
+  "${include_paths[@]}"
+
+borg create --stats --progress \
+  "$BORG_REPO"::arch-sensitive-$stamp \
+  "${borg_args[@]}" \
+  "${borg_excludes[@]}" \
+  "${secret_paths[@]}"
+
+if (( skip_root == 1 )); then
+  echo "Skipping root archive (--no-root)." >&2
+elif [[ "${#root_paths[@]}" -gt 0 ]]; then
+  if [[ -t 0 && -t 1 ]]; then
+    sudo -v
+    sudo borg create --stats --progress \
+      "$BORG_REPO"::arch-root-$stamp \
+      "${borg_args[@]}" \
+      "${root_paths[@]}"
+  else
+    echo "Skipping root archive (no TTY). Run interactively to include root paths." >&2
+  fi
+fi

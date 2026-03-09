@@ -1,0 +1,4 @@
+# Secrets - don't push to public repos
+# To use 1Password templates instead, rename to private_dot_secrets.tmpl
+# and use {{ onepasswordRead "op://..." }} syntax
+private_dot_secrets

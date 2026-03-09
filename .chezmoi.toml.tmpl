@@ -1,0 +1,14 @@
+{{- $machineType := promptStringOnce . "machine_type" "Machine type (arch/devmachine/container)" -}}
+{{- $has1password := promptBoolOnce . "has_1password" "Has 1Password installed" -}}
+{{- $hasK8s := promptBoolOnce . "has_k8s" "Has Kubernetes access" -}}
+{{- $hasAiProxy := promptBoolOnce . "has_ai_proxy" "Has AI proxy access" -}}
+{{- $gitEmail := promptStringOnce . "git_email" "Git email" -}}
+{{- $gitSigningKey := promptStringOnce . "git_signing_key" "Git SSH signing key" -}}
+
+[data]
+  machine_type = {{ $machineType | quote }}
+  has_1password = {{ $has1password }}
+  has_k8s = {{ $hasK8s }}
+  has_ai_proxy = {{ $hasAiProxy }}
+  git_email = {{ $gitEmail | quote }}
+  git_signing_key = {{ $gitSigningKey | quote }}

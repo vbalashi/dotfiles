@@ -1,0 +1,11 @@
+setup.sh
+README.md
+LICENSE
+
+{{ if ne .machine_type "arch" }}
+.k8s-proxy.sh
+{{ end }}
+
+{{ if not .has_k8s }}
+.k8s-proxy.sh
+{{ end }}

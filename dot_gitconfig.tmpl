@@ -1,0 +1,14 @@
+[user]
+    email = {{ .git_email }}
+    name = Nikolai Khrustalev
+    signingkey = {{ .git_signing_key }}
+[gpg]
+    format = ssh
+{{ if .has_1password }}
+[gpg "ssh"]
+    program = /opt/1Password/op-ssh-sign
+{{ end }}
+[commit]
+    gpgsign = true
+[credential]
+    helper = store

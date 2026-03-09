@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+local_script="$script_dir/borg-local"
+remote_script="$script_dir/borg-remote"
+microsd_script="$script_dir/borg-microsd"
+
+for s in "$local_script" "$remote_script" "$microsd_script"; do
+  if [[ ! -x "$s" ]]; then
+    echo "Missing executable script: $s" >&2
+    exit 1
+  fi
+done
+
+run_local=1
+run_remote=1
+run_microsd=1
+script_args=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --local-only)
+      run_remote=0
+      run_microsd=0
+      shift
+      ;;
+    --no-remote)
+      run_remote=0
+      shift
+      ;;
+    --no-microsd)
+      run_microsd=0
+      shift
+      ;;
+    --microsd-only)
+      run_local=0
+      run_remote=0
+      run_microsd=1
+      shift
+      ;;
+    *)
+      script_args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "${BORG_PASSPHRASE:-}" && -z "${BORG_PASSCOMMAND:-}" ]]; then
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    echo "No TTY for passphrase prompt; set BORG_PASSPHRASE or BORG_PASSCOMMAND." >&2
+    exit 1
+  fi
+  read -r -s -p "Enter Borg passphrase (used for all repos): " BORG_PASSPHRASE
+  echo
+  export BORG_PASSPHRASE
+fi
+
+clear_passphrase_on_exit=0
+if [[ -n "${BORG_PASSPHRASE:-}" ]]; then
+  clear_passphrase_on_exit=1
+fi
+
+cleanup() {
+  if (( clear_passphrase_on_exit == 1 )); then
+    unset BORG_PASSPHRASE
+  fi
+}
+trap cleanup EXIT
+
+if (( run_local == 1 )); then
+  echo "==> Running local backup"
+  "$local_script" "${script_args[@]}"
+fi
+
+if (( run_remote == 1 )); then
+  echo "==> Running remote backup"
+  "$remote_script" "${script_args[@]}"
+fi
+
+if (( run_microsd == 1 )); then
+  echo "==> Running microSD backup"
+  "$microsd_script" "${script_args[@]}"
+fi
+
+echo "All selected backup targets finished."

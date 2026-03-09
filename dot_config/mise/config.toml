@@ -1,0 +1,8 @@
+[tools]
+bat = "latest"
+fzf = "latest"
+lsd = "latest"
+ripgrep = "latest"
+neovim = "latest"
+node = "latest"
+starship = "latest"
