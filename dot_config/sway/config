@@ -47,7 +47,7 @@ exec swayidle -w \
     timeout 300 '~/bin/matrix-lock -f -c 1e1e2e' \
     timeout 600 'swaymsg "output * power off"' \
     resume '~/bin/matrix-saver-stop; swaymsg "output * power on"' \
-    before-sleep '~/bin/matrix-lock -f -c 1e1e2e'
+    before-sleep 'MATRIX_LOCK_DELAY_SEC=0 ~/bin/matrix-lock -f -c 1e1e2e'
 
 ### Autostart
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
@@ -73,7 +73,7 @@ floating_modifier $mod normal
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+e exec swaynag -t warning \
     -m 'Exit sway?' -B 'Yes' 'swaymsg exit'
-bindsym $mod+Escape exec ~/bin/matrix-lock -f -c 1e1e2e
+bindsym $mod+Escape exec sh -lc 'MATRIX_LOCK_DELAY_SEC=2.5 ~/bin/matrix-lock -f -c 1e1e2e'
 bindsym $mod+Ctrl+n exec /home/khrustal/.local/bin/theme-mode toggle
 
 ### Navigation
