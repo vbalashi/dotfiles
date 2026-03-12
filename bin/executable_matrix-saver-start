@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${HOME}/dev/sway-matrix-saver"
+PID_FILE="${XDG_RUNTIME_DIR:-/tmp}/sway-matrix-saver.pid"
+
+find_binary() {
+  if [[ -x "${HOME}/.local/bin/sway-matrix-saver" ]]; then
+    printf '%s\n' "${HOME}/.local/bin/sway-matrix-saver"
+    return 0
+  fi
+
+  if [[ -x "${ROOT}/target/release/sway-matrix-saver" ]]; then
+    printf '%s\n' "${ROOT}/target/release/sway-matrix-saver"
+    return 0
+  fi
+
+  if [[ -x "${ROOT}/target/debug/sway-matrix-saver" ]]; then
+    printf '%s\n' "${ROOT}/target/debug/sway-matrix-saver"
+    return 0
+  fi
+
+  command -v sway-matrix-saver
+}
+
+if [[ -f "${PID_FILE}" ]]; then
+  existing_pid="$(cat "${PID_FILE}")"
+  if [[ -n "${existing_pid}" ]] && kill -0 "${existing_pid}" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f "${PID_FILE}"
+fi
+
+binary="$(find_binary)"
+nohup "${binary}" >/dev/null 2>&1 &
+printf '%s\n' "$!" >"${PID_FILE}"

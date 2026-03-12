@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${HOME}/dev/sway-matrix-saver"
+
+find_binary() {
+  if [[ -x "${HOME}/.local/bin/sway-matrix-saver" ]]; then
+    printf '%s\n' "${HOME}/.local/bin/sway-matrix-saver"
+    return 0
+  fi
+
+  if [[ -x "${ROOT}/target/release/sway-matrix-saver" ]]; then
+    printf '%s\n' "${ROOT}/target/release/sway-matrix-saver"
+    return 0
+  fi
+
+  if [[ -x "${ROOT}/target/debug/sway-matrix-saver" ]]; then
+    printf '%s\n' "${ROOT}/target/debug/sway-matrix-saver"
+    return 0
+  fi
+
+  command -v sway-matrix-saver
+}
+
+binary="$(find_binary)"
+exec "${binary}" "$@"
