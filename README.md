@@ -103,3 +103,7 @@ cd ~/dotfiles && git add -A && git commit -m "..." && git push
 - `vim` → LazyVim opens, plugins auto-install on first run
 - In tmux: `prefix + I` to install TPM plugins
 - Verify: `show_proxy`, `gcm`, git commit signing
+
+## Local Notes
+
+- Home Tailscale routing roles and failure mode: `docs/tailscale-home-topology.md`
