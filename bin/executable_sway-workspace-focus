@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target_num="${1:-}"
+if [[ -z "${target_num}" ]]; then
+  printf 'usage: %s <workspace-number>\n' "${0##*/}" >&2
+  exit 2
+fi
+
+target_name="$(
+  swaymsg -t get_workspaces |
+    jq -r --argjson num "${target_num}" '.[] | select(.num == $num) | .name' |
+    head -n1
+)"
+
+if [[ -n "${target_name}" ]]; then
+  swaymsg "[workspace=\"${target_name}\"] focus" >/dev/null
+else
+  swaymsg "workspace number ${target_num}" >/dev/null
+fi

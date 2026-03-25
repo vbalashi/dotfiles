@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+direction="${1:-}"
+if [[ "${direction}" != "next" && "${direction}" != "prev" ]]; then
+  printf 'usage: %s <next|prev>\n' "${0##*/}" >&2
+  exit 2
+fi
+
+mapfile -t workspaces < <(
+  swaymsg -t get_workspaces |
+    jq -r 'sort_by(.num)[] | "\(.num)\t\(.name)\t\(.focused)"'
+)
+
+if [[ "${#workspaces[@]}" -eq 0 ]]; then
+  exit 0
+fi
+
+current_index=0
+for i in "${!workspaces[@]}"; do
+  IFS=$'\t' read -r _num _name focused <<<"${workspaces[i]}"
+  if [[ "${focused}" == "true" ]]; then
+    current_index="${i}"
+    break
+  fi
+done
+
+if [[ "${direction}" == "next" ]]; then
+  target_index=$(( (current_index + 1) % ${#workspaces[@]} ))
+else
+  target_index=$(( (current_index - 1 + ${#workspaces[@]}) % ${#workspaces[@]} ))
+fi
+
+IFS=$'\t' read -r _target_num target_name _focused <<<"${workspaces[target_index]}"
+swaymsg "[workspace=\"${target_name}\"] focus" >/dev/null

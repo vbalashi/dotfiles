@@ -1,0 +1,7 @@
+[general]
+fullscreen = true
+early-exit = true
+copy-command = "wl-copy"
+actions-on-enter = ["save-to-clipboard", "exit"]
+actions-on-escape = ["save-to-clipboard", "exit"]
+actions-on-right-click = ["save-to-clipboard", "exit"]

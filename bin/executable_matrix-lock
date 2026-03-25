@@ -30,4 +30,7 @@ if [[ "${MATRIX_LOCK_TEST:-0}" == "1" ]]; then
   exit 0
 fi
 
+# Force the first configured keyboard layout (`us` in Sway config) for lock entry.
+swaymsg 'input type:keyboard xkb_switch_layout 0' >/dev/null 2>&1 || true
+
 exec swaylock "$@"

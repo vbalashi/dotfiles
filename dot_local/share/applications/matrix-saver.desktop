@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Matrix Saver
+Comment=Lightweight Matrix-style fullscreen effect
+Exec=/home/khrustal/bin/matrix-saver
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;
+Keywords=matrix;saver;cmatrix;

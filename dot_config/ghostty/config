@@ -4,3 +4,6 @@ cursor-style = "block"
 cursor-invert-fg-bg = true
 cursor-style-blink = false
 shell-integration-features = "no-cursor"
+
+# Safer than window fullscreen in a tiled Sway workspace.
+keybind = ctrl+enter=toggle_split_zoom
