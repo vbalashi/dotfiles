@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/sway-caffeinate"
+MODE_FILE="$STATE_DIR/mode"
+EXPIRY_FILE="$STATE_DIR/expiry"
+TOKEN_FILE="$STATE_DIR/token"
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+
+mkdir -p "$STATE_DIR"
+
+notify() {
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a sway-caffeinate "$1" "$2" >/dev/null 2>&1 || true
+    fi
+}
+
+write_mode() {
+    local mode="${1:?mode is required}"
+    printf '%s\n' "$mode" > "$MODE_FILE"
+}
+
+clear_timer() {
+    rm -f "$EXPIRY_FILE" "$TOKEN_FILE"
+}
+
+current_mode() {
+    if [ -f "$MODE_FILE" ]; then
+        cat "$MODE_FILE"
+    else
+        printf 'normal\n'
+    fi
+}
+
+ensure_state() {
+    local mode now expiry
+    mode="$(current_mode)"
+
+    if [ "$mode" = "timed" ] && [ -f "$EXPIRY_FILE" ]; then
+        now="$(date +%s)"
+        expiry="$(cat "$EXPIRY_FILE")"
+        if [ "$now" -ge "$expiry" ]; then
+            write_mode "normal"
+            clear_timer
+            mode="normal"
+        fi
+    fi
+
+    if [ "$mode" != "normal" ] && [ "$mode" != "on" ] && [ "$mode" != "timed" ]; then
+        write_mode "normal"
+        clear_timer
+        mode="normal"
+    fi
+
+    printf '%s\n' "$mode"
+}
+
+is_active() {
+    case "$(ensure_state)" in
+        on|timed) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+wake_outputs() {
+    swaymsg 'output * power on' >/dev/null 2>&1 || true
+    "$HOME/bin/matrix-saver-stop" >/dev/null 2>&1 || true
+}
+
+set_normal() {
+    local quiet="${1:-0}"
+    write_mode "normal"
+    clear_timer
+    if [ "$quiet" != "1" ]; then
+        notify "Caffeinate off" "Idle actions are active again."
+    fi
+}
+
+set_on() {
+    write_mode "on"
+    clear_timer
+    wake_outputs
+    notify "Caffeinate on" "Idle actions are disabled until you turn it off."
+}
+
+set_for_minutes() {
+    local minutes="${1:?minutes are required}"
+    local seconds expiry token
+    seconds=$((minutes * 60))
+    expiry="$(( $(date +%s) + seconds ))"
+    token="$(date +%s)-$$-$RANDOM"
+
+    write_mode "timed"
+    printf '%s\n' "$expiry" > "$EXPIRY_FILE"
+    printf '%s\n' "$token" > "$TOKEN_FILE"
+    wake_outputs
+
+    (
+        sleep "$seconds"
+        if [ -f "$TOKEN_FILE" ] && [ -f "$EXPIRY_FILE" ] && \
+           [ "$(cat "$TOKEN_FILE")" = "$token" ] && \
+           [ "$(cat "$EXPIRY_FILE")" = "$expiry" ]; then
+            "$SELF" off --quiet
+        fi
+    ) >/dev/null 2>&1 &
+
+    notify "Caffeinate for ${minutes}m" "Idle actions are disabled until the timer expires."
+}
+
+toggle_mode() {
+    if is_active; then
+        set_normal 0
+    else
+        set_on
+    fi
+}
+
+format_remaining() {
+    [ -f "$EXPIRY_FILE" ] || return 1
+    local now expiry remaining
+    now="$(date +%s)"
+    expiry="$(cat "$EXPIRY_FILE")"
+    remaining=$((expiry - now))
+    if [ "$remaining" -le 0 ]; then
+        return 1
+    fi
+    if [ "$remaining" -ge 3600 ]; then
+        printf '%dh' $(((remaining + 3599) / 3600))
+    else
+        printf '%dm' $(((remaining + 59) / 60))
+    fi
+}
+
+waybar_status() {
+    local mode
+    mode="$(ensure_state)"
+
+    case "$mode" in
+        on)
+            printf '{"text":"","class":"on","tooltip":"Caffeinate is on\\nIdle actions are disabled\\nLeft click: toggle\\nMiddle click: turn off\\nRight click: keep awake for 1 hour"}\n'
+            ;;
+        timed)
+            local remaining
+            remaining="$(format_remaining || printf '?')"
+            printf '{"text":" %s","class":"timed","tooltip":"Caffeinate timer is active\\nRemaining: %s\\nIdle actions are disabled\\nLeft click: toggle\\nMiddle click: turn off\\nRight click: restart 1 hour timer"}\n' "$remaining" "$remaining"
+            ;;
+        *)
+            printf '{"text":"","class":"off","tooltip":"Caffeinate is off\\nIdle actions are active\\nLeft click: keep awake until you turn it off\\nRight click: keep awake for 1 hour"}\n'
+            ;;
+    esac
+}
+
+run_if_inactive() {
+    local action="${1:-}"
+    if is_active; then
+        exit 0
+    fi
+
+    case "$action" in
+        saver-start)
+            exec "$HOME/bin/matrix-saver-start"
+            ;;
+        lock)
+            exec "$HOME/bin/matrix-lock" -f -c 1e1e2e
+            ;;
+        power-off)
+            exec swaymsg 'output * power off'
+            ;;
+        *)
+            printf 'Usage: %s run-if-inactive {saver-start|lock|power-off}\n' "$0" >&2
+            exit 1
+            ;;
+    esac
+}
+
+case "${1:-}" in
+    init)
+        ensure_state >/dev/null
+        ;;
+    on)
+        set_on
+        ;;
+    off)
+        if [ "${2:-}" = "--quiet" ]; then
+            set_normal 1
+        else
+            set_normal 0
+        fi
+        ;;
+    toggle)
+        toggle_mode
+        ;;
+    for)
+        minutes="${2:-}"
+        case "$minutes" in
+            ''|*[!0-9]*)
+                printf 'Usage: %s for <minutes>\n' "$0" >&2
+                exit 1
+                ;;
+            *)
+                set_for_minutes "$minutes"
+                ;;
+        esac
+        ;;
+    status)
+        ensure_state
+        ;;
+    waybar)
+        waybar_status
+        ;;
+    run-if-inactive)
+        run_if_inactive "${2:-}"
+        ;;
+    *)
+        printf 'Usage: %s {init|on|off|toggle|for <minutes>|status|waybar|run-if-inactive <action>}\n' "$0" >&2
+        exit 1
+        ;;
+esac

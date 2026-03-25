@@ -1,0 +1,129 @@
+/* Catppuccin Mocha palette */
+@define-color base   #1e1e2e;
+@define-color mantle #181825;
+@define-color crust  #11111b;
+@define-color text   #cdd6f4;
+@define-color subtext0 #a6adc8;
+@define-color surface0 #313244;
+@define-color surface1 #45475a;
+@define-color blue   #89b4fa;
+@define-color green  #a6e3a1;
+@define-color peach  #fab387;
+@define-color red    #f38ba8;
+@define-color yellow #f9e2af;
+@define-color mauve  #cba6f7;
+
+* {
+    font-family: "JetBrains Mono", "Font Awesome 6 Free";
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: @base;
+    color: @text;
+    border-bottom: 2px solid @surface0;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: @subtext0;
+    border-bottom: 2px solid transparent;
+}
+
+#workspaces button.focused {
+    color: @blue;
+    border-bottom: 2px solid @blue;
+}
+
+#workspaces button.urgent {
+    color: @red;
+}
+
+#clock, #memory, #pulseaudio, #network, #battery, #tray, #custom-layout, #custom-night, #custom-caffeinate, #custom-notifications, #custom-voxtype, #custom-cpu-load {
+    padding: 0 10px;
+}
+
+#custom-layout {
+    color: @yellow;
+    font-weight: 700;
+}
+
+#custom-night {
+    color: @subtext0;
+}
+
+#custom-caffeinate {
+    color: @subtext0;
+}
+
+#custom-night.on {
+    color: @peach;
+    background-color: @surface0;
+}
+
+#custom-caffeinate.on {
+    color: @green;
+    background-color: @surface0;
+}
+
+#custom-caffeinate.timed {
+    color: @yellow;
+    background-color: @surface0;
+}
+
+#custom-notifications {
+    color: @subtext0;
+}
+
+#custom-notifications.active {
+    color: @blue;
+}
+
+#custom-cpu-load {
+    color: @green;
+}
+
+#memory {
+    color: @yellow;
+}
+
+#custom-notifications.dnd {
+    color: @red;
+}
+
+#battery.warning {
+    color: @yellow;
+}
+
+#battery.critical {
+    color: @red;
+}
+
+#pulseaudio.muted {
+    color: @subtext0;
+}
+
+#mode {
+    color: @peach;
+    font-style: italic;
+}
+
+#custom-voxtype {
+    color: @subtext0;
+    font-weight: 700;
+}
+
+#custom-voxtype.idle {
+    color: @subtext0;
+}
+
+#custom-voxtype.recording {
+    color: @green;
+    background-color: @surface0;
+}
+
+#custom-voxtype.transcribing {
+    color: @peach;
+    background-color: @surface0;
+}

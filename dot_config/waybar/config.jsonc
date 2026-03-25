@@ -1,0 +1,89 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 30,
+    "modules-left": ["sway/workspaces", "sway/mode"],
+    "modules-center": ["custom/voxtype", "clock"],
+    "modules-right": ["custom/cpu-load", "memory", "custom/layout", "custom/night", "custom/caffeinate", "pulseaudio", "network", "battery", "custom/notifications", "tray"],
+
+    "sway/workspaces": {
+        "disable-scroll": false,
+        "format": "{value}"
+    },
+    "sway/mode": {
+        "format": "<span style=\"italic\">{}</span>"
+    },
+    "custom/layout": {
+        "exec": "/home/khrustal/.local/bin/waybar-keyboard-layout",
+        "interval": 1,
+        "return-type": "json",
+        "tooltip": false
+    },
+    "custom/night": {
+        "exec": "/home/khrustal/.local/bin/theme-mode waybar",
+        "interval": 5,
+        "return-type": "json",
+        "on-click": "/home/khrustal/.local/bin/theme-mode toggle"
+    },
+    "custom/caffeinate": {
+        "exec": "/home/khrustal/bin/sway-caffeinate waybar",
+        "interval": 5,
+        "return-type": "json",
+        "on-click": "/home/khrustal/bin/sway-caffeinate toggle",
+        "on-click-middle": "/home/khrustal/bin/sway-caffeinate off",
+        "on-click-right": "/home/khrustal/bin/sway-caffeinate for 60"
+    },
+    "custom/voxtype": {
+        "exec": "voxtype status --follow --format json --extended --icon-theme text",
+        "return-type": "json",
+        "format": "{}",
+        "tooltip": true
+    },
+    "clock": {
+        "format": "{:%a %d %b  %H:%M}",
+        "tooltip-format": "<tt>{calendar}</tt>"
+    },
+    "custom/cpu-load": {
+        "exec": "/home/khrustal/.local/bin/waybar-cpu-load",
+        "interval": 2,
+        "return-type": "json"
+    },
+    "memory": {
+        "format": "󰍛 {}%",
+        "tooltip-format": "{used:0.1f}G / {total:0.1f}G"
+    },
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "󰝟 muted",
+        "format-icons": {
+            "default": ["󰕿", "󰖀", "󰕾"]
+        },
+        "on-click": "pavucontrol"
+    },
+    "network": {
+        "format-wifi": "󰖩 {essid}",
+        "format-ethernet": "󰈀 {ifname}",
+        "format-disconnected": "󰖪 off",
+        "tooltip-format": "{ipaddr}/{cidr}"
+    },
+    "battery": {
+        "states": {
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{icon} {capacity}%",
+        "format-charging": "󰂄 {capacity}%",
+        "format-icons": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+    },
+    "custom/notifications": {
+        "exec": "/home/khrustal/.local/bin/waybar-notifications",
+        "interval": 3,
+        "return-type": "json",
+        "on-click": "makoctl restore",
+        "on-click-middle": "makoctl dismiss --all",
+        "on-click-right": "makoctl mode -t do-not-disturb"
+    },
+    "tray": {
+        "spacing": 10
+    }
+}

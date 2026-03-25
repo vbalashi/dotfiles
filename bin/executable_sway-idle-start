@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pkill -x swayidle >/dev/null 2>&1 || true
+
+exec /usr/bin/swayidle -w \
+    timeout 240 "/home/khrustal/bin/sway-caffeinate run-if-inactive saver-start" \
+    timeout 300 "/home/khrustal/bin/sway-caffeinate run-if-inactive lock" \
+    timeout 600 "/home/khrustal/bin/sway-caffeinate run-if-inactive power-off" \
+    resume '/home/khrustal/bin/matrix-saver-stop; swaymsg "output * power on"' \
+    before-sleep "MATRIX_LOCK_DELAY_SEC=0 /home/khrustal/bin/matrix-lock -f -c 1e1e2e"
