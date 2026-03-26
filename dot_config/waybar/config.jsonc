@@ -29,7 +29,7 @@
         "exec": "/home/khrustal/bin/sway-caffeinate waybar",
         "interval": 5,
         "return-type": "json",
-        "on-click": "/home/khrustal/bin/sway-caffeinate toggle",
+        "on-click": "/home/khrustal/bin/sway-caffeinate on",
         "on-click-middle": "/home/khrustal/bin/sway-caffeinate off",
         "on-click-right": "/home/khrustal/bin/sway-caffeinate for 60"
     },

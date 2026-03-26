@@ -137,15 +137,15 @@ waybar_status() {
 
     case "$mode" in
         on)
-            printf '{"text":"","class":"on","tooltip":"Caffeinate is on\\nIdle actions are disabled\\nLeft click: toggle\\nMiddle click: turn off\\nRight click: keep awake for 1 hour"}\n'
+            printf '{"text":"","class":"on","tooltip":"Caffeinate is on\\nIdle actions are disabled\\nLeft click: keep awake\\nMiddle click: turn off\\nRight click: keep awake for 1 hour"}\n'
             ;;
         timed)
             local remaining
             remaining="$(format_remaining || printf '?')"
-            printf '{"text":" %s","class":"timed","tooltip":"Caffeinate timer is active\\nRemaining: %s\\nIdle actions are disabled\\nLeft click: toggle\\nMiddle click: turn off\\nRight click: restart 1 hour timer"}\n' "$remaining" "$remaining"
+            printf '{"text":" %s","class":"timed","tooltip":"Caffeinate timer is active\\nRemaining: %s\\nIdle actions are disabled\\nLeft click: keep awake\\nMiddle click: turn off\\nRight click: restart 1 hour timer"}\n' "$remaining" "$remaining"
             ;;
         *)
-            printf '{"text":"","class":"off","tooltip":"Caffeinate is off\\nIdle actions are active\\nLeft click: keep awake until you turn it off\\nRight click: keep awake for 1 hour"}\n'
+            printf '{"text":"","class":"off","tooltip":"Caffeinate is off\\nIdle actions are active\\nLeft click: turn on\\nMiddle click: turn off\\nRight click: keep awake for 1 hour"}\n'
             ;;
     esac
 }
