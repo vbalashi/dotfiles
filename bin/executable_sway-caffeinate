@@ -77,6 +77,9 @@ set_normal() {
 }
 
 set_on() {
+    if is_active; then
+        return 0
+    fi
     write_mode "on"
     clear_timer
     wake_outputs
